@@ -9,8 +9,8 @@ import AnimationCanvas from "@/components/AnimationCanvas";
 import PlaybackControls from "@/components/PlaybackControls";
 import EdgePreviewDialog from "@/components/EdgePreviewDialog";
 import { processImageAndGetPoints } from "@/utils/imageProcessor";
-import { exportToPng } from "@/utils/exportUtils";
-import { Point, ProcessingResult } from "@/types";
+import { exportToPng, exportToVideo } from "@/utils/exportUtils";
+import { Point, ProcessingResult, ColorMode } from "@/types";
 
 const DEFAULT_WORDS = [
   "בריאות", "שלווה", "אושר", "אהבה", "הצלחה", "שמחה", "שפע", "חוכמה", 
@@ -19,7 +19,9 @@ const DEFAULT_WORDS = [
   "אמת", "למידה", "סקרנות", "חופש", "הנאה", "הצלחה", "ענווה", "חוזק"
 ];
 
-const BASE_COLOR = "#90ee90"; // Light green
+const DEFAULT_CUSTOM_COLORS = [
+  "#FF5733", "#33FF57", "#3357FF", "#FF33F5", "#F5FF33"
+];
 
 const Index = () => {
   const { toast } = useToast();
@@ -28,10 +30,17 @@ const Index = () => {
   const [edgeImageUrl, setEdgeImageUrl] = useState<string | null>(null);
   const [internalPoints, setInternalPoints] = useState<Point[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const [animationDuration, setAnimationDuration] = useState(5);
   const [isPlaying, setIsPlaying] = useState(false);
   const [restartTrigger, setRestartTrigger] = useState(0);
   const [isEdgeDialogOpen, setIsEdgeDialogOpen] = useState(false);
+  const [maxPoints, setMaxPoints] = useState(500);
+  const [colorMode, setColorMode] = useState<ColorMode>('single');
+  const [color, setColor] = useState('#90ee90');
+  const [customColors, setCustomColors] = useState<string[]>(DEFAULT_CUSTOM_COLORS);
+  const [backgroundColor, setBackgroundColor] = useState<string>('transparent');
+  
   const animationContainerRef = useRef<HTMLDivElement>(null);
 
   const handleImageUpload = (file: File) => {
@@ -60,7 +69,7 @@ const Index = () => {
     setIsPlaying(false);
 
     try {
-      const result: ProcessingResult = await processImageAndGetPoints(file);
+      const result: ProcessingResult = await processImageAndGetPoints(file, maxPoints);
       setInternalPoints(result.internalPoints);
       setEdgeImageUrl(result.edgeImageUrl);
       
@@ -110,7 +119,7 @@ const Index = () => {
       await exportToPng(animationContainerRef.current);
       toast({
         title: "Export successful",
-        description: "Your word cloud has been downloaded",
+        description: "Your word cloud has been downloaded as a PNG image",
       });
     } catch (error) {
       console.error("Export error:", error);
@@ -121,6 +130,41 @@ const Index = () => {
       });
     }
   }, [toast]);
+
+  const handleVideoExport = useCallback(async () => {
+    if (isExporting) return;
+    
+    setIsExporting(true);
+    try {
+      handleRestart(); // Restart animation for the video
+      
+      await exportToVideo(
+        animationContainerRef.current, 
+        animationDuration,
+        () => {
+          toast({
+            title: "Video recording started",
+            description: "Recording your animation, please wait...",
+          });
+        },
+        () => {
+          setIsExporting(false);
+          toast({
+            title: "Video export complete",
+            description: "Your animation has been downloaded as a WebM video",
+          });
+        }
+      );
+    } catch (error) {
+      console.error("Video export error:", error);
+      setIsExporting(false);
+      toast({
+        title: "Video export failed",
+        description: "Failed to export the animation as video",
+        variant: "destructive",
+      });
+    }
+  }, [toast, animationDuration, handleRestart, isExporting]);
 
   const handleViewPoints = useCallback(() => {
     setIsEdgeDialogOpen(true);
@@ -151,6 +195,16 @@ const Index = () => {
                 onDurationChange={handleDurationChange}
                 animationDuration={animationDuration}
                 hasImage={!!imageUrl}
+                maxPoints={maxPoints}
+                onMaxPointsChange={setMaxPoints}
+                colorMode={colorMode}
+                onColorModeChange={setColorMode}
+                color={color}
+                onColorChange={setColor}
+                customColors={customColors}
+                onCustomColorsChange={setCustomColors}
+                backgroundColor={backgroundColor}
+                onBackgroundColorChange={setBackgroundColor}
               />
               
               <Separator />
@@ -158,8 +212,9 @@ const Index = () => {
               <PlaybackControls
                 onRestart={handleRestart}
                 onExport={handleExport}
+                onVideoExport={handleVideoExport}
                 onViewPoints={handleViewPoints}
-                canPlay={internalPoints.length > 0 && !isProcessing}
+                canPlay={internalPoints.length > 0 && !isProcessing && !isExporting}
               />
             </Card>
           </div>
@@ -170,10 +225,13 @@ const Index = () => {
               <AnimationCanvas
                 internalPoints={internalPoints}
                 words={DEFAULT_WORDS}
-                color={BASE_COLOR}
+                colorMode={colorMode}
+                color={color}
+                customColors={customColors}
                 animationDuration={animationDuration}
                 isPlaying={isPlaying && restartTrigger >= 0}
                 containerRef={animationContainerRef}
+                backgroundColor={backgroundColor}
               />
             </div>
           </Card>

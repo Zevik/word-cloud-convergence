@@ -24,10 +24,14 @@ export interface WordElementState {
   color: string; // Specific color for this word
 }
 
+export type ColorMode = 'single' | 'rainbow' | 'custom';
+
 export type WordGardenProps = {
   internalPoints: Point[];
   words: string[];
+  colorMode: ColorMode;
   color: string; // Base color hex (e.g., "#90ee90")
+  customColors?: string[]; // Optional custom colors for the 'custom' mode
   animationDuration: number; // Duration in seconds from props
   isPlaying: boolean; // Trigger to start/restart animation
 };
@@ -35,10 +39,13 @@ export type WordGardenProps = {
 export type AnimationCanvasProps = {
   internalPoints: Point[];
   words: string[];
+  colorMode: ColorMode;
   color: string;
+  customColors?: string[];
   animationDuration: number;
   isPlaying: boolean;
   containerRef: React.RefObject<HTMLDivElement>;
+  backgroundColor: string;
 };
 
 export type ProcessingControlsProps = {
@@ -47,11 +54,22 @@ export type ProcessingControlsProps = {
   onDurationChange: (duration: number) => void;
   animationDuration: number;
   hasImage: boolean;
+  maxPoints: number;
+  onMaxPointsChange: (points: number) => void;
+  colorMode: ColorMode;
+  onColorModeChange: (mode: ColorMode) => void;
+  color: string;
+  onColorChange: (color: string) => void;
+  customColors: string[];
+  onCustomColorsChange: (colors: string[]) => void;
+  backgroundColor: string;
+  onBackgroundColorChange: (color: string) => void;
 };
 
 export type PlaybackControlsProps = {
   onRestart: () => void;
   onExport: () => void;
+  onVideoExport: () => void;
   onViewPoints: () => void;
   canPlay: boolean;
 };

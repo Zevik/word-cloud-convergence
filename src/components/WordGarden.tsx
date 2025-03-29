@@ -1,10 +1,13 @@
+
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { WordGardenProps, WordElementState } from '@/types';
 
 const WordGarden: React.FC<WordGardenProps> = ({
   internalPoints,
   words,
+  colorMode,
   color: baseColor,
+  customColors = [],
   animationDuration,
   isPlaying,
 }) => {
@@ -27,13 +30,28 @@ const WordGarden: React.FC<WordGardenProps> = ({
     }
   }, []);
 
+  // Get color based on color mode and index
+  const getColor = useCallback((index: number) => {
+    if (colorMode === 'single') {
+      return hexToRgba(baseColor, 0.7 + Math.random() * 0.3);
+    } else if (colorMode === 'rainbow') {
+      const hue = (index * 137.508) % 360; // Golden angle approximation for nice distribution
+      return `hsla(${hue}, 70%, 60%, ${0.7 + Math.random() * 0.3})`;
+    } else if (colorMode === 'custom' && customColors.length > 0) {
+      const selectedColor = customColors[index % customColors.length];
+      return hexToRgba(selectedColor, 0.7 + Math.random() * 0.3);
+    }
+    // Fallback
+    return hexToRgba(baseColor, 0.7 + Math.random() * 0.3);
+  }, [colorMode, baseColor, customColors, hexToRgba]);
+
   // Update container size on mount and resize
   useEffect(() => {
     const updateSize = () => {
       if (containerRef.current) {
         const { clientWidth, clientHeight } = containerRef.current;
         if (clientWidth > 0 && clientHeight > 0) {
-          setContainerSize({ width: clientWidth, height: clientWidth });
+          setContainerSize({ width: clientWidth, height: clientHeight });
           console.log(`Container size: ${clientWidth}x${clientHeight}`);
         } else {
           requestAnimationFrame(updateSize);
@@ -63,11 +81,11 @@ const WordGarden: React.FC<WordGardenProps> = ({
       return;
     }
 
-    console.log(`Setting up ${Math.min(internalPoints.length, 350)} words for animation...`);
+    console.log(`Setting up ${internalPoints.length} words for animation...`);
     setStartAnimation(false);
 
     const newWordElements: WordElementState[] = [];
-    const numElementsToCreate = Math.min(internalPoints.length, 350);
+    const numElementsToCreate = internalPoints.length;
 
     for (let i = 0; i < numElementsToCreate; i++) {
       const word = words[i % words.length];
@@ -95,7 +113,7 @@ const WordGarden: React.FC<WordGardenProps> = ({
       const fontSize = 9 + Math.random() * 8; // 9-17px range
       const finalScale = 0.65 + Math.random() * 0.3; // 0.65-0.95 scale
       const delay = Math.random() * (animationDuration * 1000 * 0.6);
-      const wordColor = hexToRgba(baseColor, 0.7 + Math.random() * 0.3);
+      const wordColor = getColor(i);
 
       newWordElements.push({
         id: `word-${i}-${Date.now()}`,
@@ -121,7 +139,7 @@ const WordGarden: React.FC<WordGardenProps> = ({
     return () => {
       clearTimeout(animationStartTimeout);
     };
-  }, [isPlaying, internalPoints, words, containerSize, animationDuration, baseColor, hexToRgba]);
+  }, [isPlaying, internalPoints, words, containerSize, animationDuration, getColor]);
 
   return (
     <div

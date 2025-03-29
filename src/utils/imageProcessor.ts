@@ -33,7 +33,8 @@ const generateInternalPoints = (imageData: ImageData, maxPoints: number = 1000):
   
   // Calculate a skip factor based on the image size and desired density
   // We want a reasonable distribution across the image
-  const skipFactor = Math.max(1, Math.floor(Math.sqrt(width * height / maxPoints)));
+  const totalPixels = width * height;
+  let skipFactor = Math.max(1, Math.floor(Math.sqrt(totalPixels / maxPoints)));
   
   // Sample dark pixels directly from the processed image
   for (let y = 0; y < height; y += skipFactor) {
@@ -61,7 +62,7 @@ const generateInternalPoints = (imageData: ImageData, maxPoints: number = 1000):
 };
 
 // Main processing function
-export const processImageAndGetPoints = async (imageFile: File): Promise<ProcessingResult> => {
+export const processImageAndGetPoints = async (imageFile: File, maxPoints: number = 1000): Promise<ProcessingResult> => {
   return new Promise((resolve, reject) => {
     try {
       const reader = new FileReader();
@@ -108,7 +109,7 @@ export const processImageAndGetPoints = async (imageFile: File): Promise<Process
           const edgeImageUrl = canvas.toDataURL('image/png');
           
           // Generate points from the processed image
-          const internalPoints = generateInternalPoints(processedData, 350);
+          const internalPoints = generateInternalPoints(processedData, maxPoints);
           
           console.log(`Generated ${internalPoints.length} internal points`);
           
