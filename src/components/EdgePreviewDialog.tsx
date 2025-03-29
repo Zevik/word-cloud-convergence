@@ -9,7 +9,6 @@ import {
   DialogClose,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Eye } from "lucide-react";
 
 interface EdgePreviewDialogProps {
   edgeImageUrl: string | null;
@@ -28,7 +27,8 @@ const EdgePreviewDialog: React.FC<EdgePreviewDialogProps> = ({
         <DialogHeader>
           <DialogTitle>Edge Detection Preview</DialogTitle>
           <DialogDescription>
-            This shows the edge detection result used to create the word cloud shape.
+            This shows the edge detection result used to create the word cloud shape. 
+            The black pixels in this image represent the areas where words will appear.
           </DialogDescription>
         </DialogHeader>
         <div className="flex flex-col items-center justify-center p-2">

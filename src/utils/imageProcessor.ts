@@ -1,9 +1,9 @@
+
 import { Point, ProcessingResult } from "@/types";
 
 // Apply Grayscale, Blur, and Canny Edge Detection
 const applyCannyEdgeDetection = (imageData: ImageData): ImageData => {
   // Simplified edge detection for client-side implementation
-  // This is a basic implementation - a real app would use a more robust algorithm
   const data = imageData.data;
   const width = imageData.width;
   const height = imageData.height;
@@ -40,79 +40,6 @@ const applyCannyEdgeDetection = (imageData: ImageData): ImageData => {
   return new ImageData(data, width, height);
 };
 
-// Find the main contour using Moore-Neighbor tracing
-const findContourMooreNeighbor = (edgeImageData: ImageData): Point[] => {
-  const data = edgeImageData.data;
-  const width = edgeImageData.width;
-  const height = edgeImageData.height;
-  const visited = new Set<string>();
-  const contour: Point[] = [];
-  
-  // Find the first white pixel (edge pixel)
-  let startX = -1, startY = -1;
-  for (let y = 0; y < height; y++) {
-    for (let x = 0; x < width; x++) {
-      const idx = (y * width + x) * 4;
-      if (data[idx] === 255) { // White pixel (edge)
-        startX = x;
-        startY = y;
-        break;
-      }
-    }
-    if (startX !== -1) break;
-  }
-  
-  if (startX === -1) return []; // No edge found
-  
-  // Moore-Neighbor tracing algorithm (simplified)
-  const directions = [
-    [0, -1], [1, -1], [1, 0], [1, 1], 
-    [0, 1], [-1, 1], [-1, 0], [-1, -1]
-  ];
-  
-  let x = startX;
-  let y = startY;
-  let dir = 0; // Start by going right
-  
-  do {
-    const key = `${x},${y}`;
-    if (!visited.has(key)) {
-      visited.add(key);
-      contour.push({ 
-        x: (x / width) * 100, 
-        y: (y / height) * 100 
-      });
-    }
-    
-    // Check if the next pixel in the current direction is white
-    let found = false;
-    for (let i = 0; i < 8; i++) {
-      const nextDir = (dir + i) % 8;
-      const [dx, dy] = directions[nextDir];
-      const nx = x + dx;
-      const ny = y + dy;
-      
-      if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
-        const idx = (ny * width + nx) * 4;
-        if (data[idx] === 255) { // White pixel (edge)
-          x = nx;
-          y = ny;
-          dir = nextDir;
-          found = true;
-          break;
-        }
-      }
-    }
-    
-    if (!found) break; // Isolated point or error
-    
-  } while (x !== startX || y !== startY);
-  
-  // Simplify the contour to reduce points (optional)
-  // The random walk sampling inside will be more efficient with fewer points
-  return contour;
-};
-
 // Check if a point is inside the polygon
 const isPointInsidePolygon = (point: Point, polygon: Point[]): boolean => {
   let inside = false;
@@ -124,72 +51,46 @@ const isPointInsidePolygon = (point: Point, polygon: Point[]): boolean => {
   return inside;
 };
 
-// Generate internal points using a more structured approach
-const generateInternalPointsRejection = (
-  contourPoints: Point[], 
-  count: number = 500
-): Point[] => {
-  if (contourPoints.length === 0) return [];
+// Generate internal points using direct pixel sampling
+const generateInternalPoints = (imageData: ImageData, count: number = 500): Point[] => {
+  const { width, height, data } = imageData;
+  const points: Point[] = [];
+  const threshold = 128;
   
-  // Find bounding box of the contour
-  let minX = 100, minY = 100, maxX = 0, maxY = 0;
-  for (const point of contourPoints) {
-    minX = Math.min(minX, point.x);
-    minY = Math.min(minY, point.y);
-    maxX = Math.max(maxX, point.x);
-    maxY = Math.max(maxY, point.y);
-  }
+  // Determine the skip factor based on image size and desired point count
+  const totalPixels = width * height;
+  const skipFactor = Math.max(1, Math.floor(Math.sqrt(totalPixels / count)));
   
-  const internalPoints: Point[] = [];
-  let attempts = 0;
-  const maxAttempts = count * 20; // Increased max attempts for better coverage
-  
-  // Create a grid-based distribution with some randomness
-  const gridSize = Math.sqrt(count) * 1.5;
-  const cellWidth = (maxX - minX) / gridSize;
-  const cellHeight = (maxY - minY) / gridSize;
-  
-  // Try to fill the shape with points in a more structured way
-  for (let i = 0; i < gridSize; i++) {
-    for (let j = 0; j < gridSize; j++) {
-      // Base position at grid cell center
-      const baseX = minX + (i + 0.5) * cellWidth;
-      const baseY = minY + (j + 0.5) * cellHeight;
+  // Sample dark pixels directly from the edge-detected image
+  for (let y = 0; y < height; y += skipFactor) {
+    for (let x = 0; x < width; x += skipFactor) {
+      const idx = (y * width + x) * 4;
+      const brightness = (data[idx] + data[idx + 1] + data[idx + 2]) / 3;
       
-      // Add some randomness within the cell
-      const jitterX = (Math.random() - 0.5) * cellWidth * 0.8;
-      const jitterY = (Math.random() - 0.5) * cellHeight * 0.8;
-      
-      const x = baseX + jitterX;
-      const y = baseY + jitterY;
-      
-      // Check if the point is inside the contour
-      if (isPointInsidePolygon({ x, y }, contourPoints)) {
-        internalPoints.push({ x, y });
-        if (internalPoints.length >= count) break;
+      if (brightness < threshold) {
+        // Convert to normalized coordinates (0-100)
+        points.push({
+          x: (x / width) * 100,
+          y: (y / height) * 100
+        });
+        
+        if (points.length >= count) break;
       }
-      
-      attempts++;
-      if (attempts >= maxAttempts) break;
     }
-    if (internalPoints.length >= count || attempts >= maxAttempts) break;
+    if (points.length >= count) break;
   }
   
-  // If we don't have enough points, fall back to pure random sampling
-  while (internalPoints.length < count && attempts < maxAttempts) {
-    attempts++;
-    
-    // Generate a random point inside the bounding box
-    const x = minX + Math.random() * (maxX - minX);
-    const y = minY + Math.random() * (maxY - minY);
-    
-    // Check if the point is inside the contour
-    if (isPointInsidePolygon({ x, y }, contourPoints)) {
-      internalPoints.push({ x, y });
+  // If we don't have enough points, fill with some random ones inside the image
+  if (points.length < count / 2) {
+    for (let i = points.length; i < count; i++) {
+      points.push({
+        x: Math.random() * 100,
+        y: Math.random() * 100
+      });
     }
   }
   
-  return internalPoints;
+  return points;
 };
 
 // Main processing function
@@ -213,7 +114,7 @@ export const processImageAndGetPoints = async (
           }
           
           // Set canvas size
-          const maxSize = 800; // Increased max dimension for better detail
+          const maxSize = 800;
           let width = img.width;
           let height = img.height;
           
@@ -241,18 +142,15 @@ export const processImageAndGetPoints = async (
           ctx.putImageData(edgeData, 0, 0);
           const edgeImageUrl = canvas.toDataURL('image/png');
           
-          // Find contour
-          const contourPoints = findContourMooreNeighbor(edgeData);
-          
-          // Generate internal points
-          const internalPoints = generateInternalPointsRejection(contourPoints, 350);
+          // Generate internal points by directly sampling dark pixels
+          const internalPoints = generateInternalPoints(edgeData, 350);
           
           console.log(`Generated ${internalPoints.length} internal points`);
           
           // Return the result
           resolve({
             internalPoints,
-            contourPoints,
+            contourPoints: [], // Not used in this direct sampling approach
             originalImageUrl: e.target?.result as string,
             edgeImageUrl
           });

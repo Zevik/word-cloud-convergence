@@ -15,11 +15,16 @@ const WordGarden: React.FC<WordGardenProps> = ({
 
   // Convert hex to rgba
   const hexToRgba = useCallback((hex: string, alpha: number): string => {
-    hex = hex.replace('#', '');
-    const r = parseInt(hex.substring(0, 2), 16);
-    const g = parseInt(hex.substring(2, 4), 16);
-    const b = parseInt(hex.substring(4, 6), 16);
-    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    try {
+      hex = hex.replace('#', '');
+      const r = parseInt(hex.substring(0, 2), 16);
+      const g = parseInt(hex.substring(2, 4), 16);
+      const b = parseInt(hex.substring(4, 6), 16);
+      return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    } catch (error) {
+      console.error('Color parsing error:', error);
+      return `rgba(144, 238, 144, ${alpha})`; // Default to lightgreen
+    }
   }, []);
 
   // Update container size on mount and resize
@@ -65,8 +70,8 @@ const WordGarden: React.FC<WordGardenProps> = ({
     const numElementsToCreate = Math.min(internalPoints.length, 350);
 
     // Find the scaling factors to map normalized points to container size
-    const xScale = containerSize.width / 100;
-    const yScale = containerSize.height / 100;
+    const xScale = containerSize.width;
+    const yScale = containerSize.height;
 
     for (let i = 0; i < numElementsToCreate; i++) {
       const word = words[i % words.length];
@@ -78,13 +83,17 @@ const WordGarden: React.FC<WordGardenProps> = ({
       const initialX = containerSize.width / 2 + Math.cos(angle) * radius;
       const initialY = containerSize.height / 2 + Math.sin(angle) * radius;
 
-      // Final position inside container - direct mapping from normalized coordinates
-      const targetX = targetPoint.x * xScale;
-      const targetY = targetPoint.y * yScale;
+      // Apply small jitter to avoid perfect alignment
+      const jitterX = (Math.random() - 0.5) * 5;
+      const jitterY = (Math.random() - 0.5) * 5;
+      
+      // Final position inside container - direct mapping from normalized coordinates (0-100 to pixels)
+      const targetX = (targetPoint.x / 100) * xScale + jitterX;
+      const targetY = (targetPoint.y / 100) * yScale + jitterY;
 
       // Other properties
-      const fontSize = 10 + Math.random() * 6; // Smaller font size range
-      const finalScale = 0.8 + Math.random() * 0.4; // Adjusted scale range
+      const fontSize = 9 + Math.random() * 8; // 9-17px range
+      const finalScale = 0.65 + Math.random() * 0.3; // 0.65-0.95 scale
       const delay = Math.random() * (animationDuration * 1000 * 0.6);
       const wordColor = hexToRgba(baseColor, 0.7 + Math.random() * 0.3);
 
@@ -152,6 +161,8 @@ const WordGarden: React.FC<WordGardenProps> = ({
               left: 0,
               top: 0,
               willChange: 'transform, opacity',
+              fontWeight: 'bold',
+              textShadow: '0 0 1px rgba(0,0,0,0.3)'
             }}
           >
             {element.word}
