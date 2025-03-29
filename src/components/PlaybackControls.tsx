@@ -1,15 +1,16 @@
 
 import { Button } from "@/components/ui/button";
 import { PlaybackControlsProps } from "@/types";
-import { RefreshCw, Download } from "lucide-react";
+import { RefreshCw, Download, Eye } from "lucide-react";
 
 const PlaybackControls: React.FC<PlaybackControlsProps> = ({
   onRestart,
   onExport,
+  onViewPoints,
   canPlay
 }) => {
   return (
-    <div className="flex gap-2">
+    <div className="flex flex-wrap gap-2">
       <Button 
         variant="outline" 
         onClick={onRestart} 
@@ -27,6 +28,15 @@ const PlaybackControls: React.FC<PlaybackControlsProps> = ({
       >
         <Download className="mr-2 h-4 w-4" />
         Export
+      </Button>
+      <Button 
+        variant="outline" 
+        onClick={onViewPoints} 
+        disabled={!canPlay}
+        className="flex-1"
+      >
+        <Eye className="mr-2 h-4 w-4" />
+        View Points
       </Button>
     </div>
   );

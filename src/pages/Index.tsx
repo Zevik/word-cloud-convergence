@@ -7,6 +7,7 @@ import ImageUploadArea from "@/components/ImageUploadArea";
 import ProcessingControls from "@/components/ProcessingControls";
 import AnimationCanvas from "@/components/AnimationCanvas";
 import PlaybackControls from "@/components/PlaybackControls";
+import EdgePreviewDialog from "@/components/EdgePreviewDialog";
 import { processImageAndGetPoints } from "@/utils/imageProcessor";
 import { exportToPng } from "@/utils/exportUtils";
 import { Point, ProcessingResult } from "@/types";
@@ -30,6 +31,7 @@ const Index = () => {
   const [animationDuration, setAnimationDuration] = useState(5);
   const [isPlaying, setIsPlaying] = useState(false);
   const [restartTrigger, setRestartTrigger] = useState(0);
+  const [isEdgeDialogOpen, setIsEdgeDialogOpen] = useState(false);
   const animationContainerRef = useRef<HTMLDivElement>(null);
 
   const handleImageUpload = (file: File) => {
@@ -37,6 +39,7 @@ const Index = () => {
     setImageUrl(URL.createObjectURL(file));
     setIsPlaying(false);
     setInternalPoints([]);
+    setEdgeImageUrl(null);
   };
 
   const handleDurationChange = (duration: number) => {
@@ -119,6 +122,10 @@ const Index = () => {
     }
   }, [toast]);
 
+  const handleViewPoints = useCallback(() => {
+    setIsEdgeDialogOpen(true);
+  }, []);
+
   return (
     <div className="min-h-screen bg-background py-8 px-4 sm:px-6">
       <div className="max-w-7xl mx-auto space-y-8">
@@ -151,6 +158,7 @@ const Index = () => {
               <PlaybackControls
                 onRestart={handleRestart}
                 onExport={handleExport}
+                onViewPoints={handleViewPoints}
                 canPlay={internalPoints.length > 0 && !isProcessing}
               />
             </Card>
@@ -171,6 +179,13 @@ const Index = () => {
           </Card>
         </div>
       </div>
+
+      {/* Edge Detection Preview Dialog */}
+      <EdgePreviewDialog 
+        edgeImageUrl={edgeImageUrl}
+        isOpen={isEdgeDialogOpen}
+        onOpenChange={setIsEdgeDialogOpen}
+      />
     </div>
   );
 };
