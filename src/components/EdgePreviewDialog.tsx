@@ -5,7 +5,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
+  DialogDescription,
   DialogClose,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -27,6 +27,9 @@ const EdgePreviewDialog: React.FC<EdgePreviewDialogProps> = ({
       <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-auto">
         <DialogHeader>
           <DialogTitle>Edge Detection Preview</DialogTitle>
+          <DialogDescription>
+            This shows the edge detection result used to create the word cloud shape.
+          </DialogDescription>
         </DialogHeader>
         <div className="flex flex-col items-center justify-center p-2">
           {edgeImageUrl ? (
@@ -45,16 +48,5 @@ const EdgePreviewDialog: React.FC<EdgePreviewDialogProps> = ({
     </Dialog>
   );
 };
-
-export const EdgePreviewTrigger: React.FC<{ disabled: boolean }> = ({ disabled }) => (
-  <Button 
-    variant="outline" 
-    disabled={disabled}
-    className="flex-1"
-  >
-    <Eye className="mr-2 h-4 w-4" />
-    View Points
-  </Button>
-);
 
 export default EdgePreviewDialog;

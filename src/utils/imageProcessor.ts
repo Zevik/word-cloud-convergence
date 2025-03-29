@@ -1,4 +1,3 @@
-
 import { Point, ProcessingResult } from "@/types";
 
 // Apply Grayscale, Blur, and Canny Edge Detection
@@ -125,10 +124,10 @@ const isPointInsidePolygon = (point: Point, polygon: Point[]): boolean => {
   return inside;
 };
 
-// Generate internal points using Rejection Sampling
+// Generate internal points using a more structured approach
 const generateInternalPointsRejection = (
   contourPoints: Point[], 
-  count: number = 100
+  count: number = 500
 ): Point[] => {
   if (contourPoints.length === 0) return [];
   
@@ -143,8 +142,40 @@ const generateInternalPointsRejection = (
   
   const internalPoints: Point[] = [];
   let attempts = 0;
-  const maxAttempts = count * 10; // Avoid infinite loop
+  const maxAttempts = count * 20; // Increased max attempts for better coverage
   
+  // Create a grid-based distribution with some randomness
+  const gridSize = Math.sqrt(count) * 1.5;
+  const cellWidth = (maxX - minX) / gridSize;
+  const cellHeight = (maxY - minY) / gridSize;
+  
+  // Try to fill the shape with points in a more structured way
+  for (let i = 0; i < gridSize; i++) {
+    for (let j = 0; j < gridSize; j++) {
+      // Base position at grid cell center
+      const baseX = minX + (i + 0.5) * cellWidth;
+      const baseY = minY + (j + 0.5) * cellHeight;
+      
+      // Add some randomness within the cell
+      const jitterX = (Math.random() - 0.5) * cellWidth * 0.8;
+      const jitterY = (Math.random() - 0.5) * cellHeight * 0.8;
+      
+      const x = baseX + jitterX;
+      const y = baseY + jitterY;
+      
+      // Check if the point is inside the contour
+      if (isPointInsidePolygon({ x, y }, contourPoints)) {
+        internalPoints.push({ x, y });
+        if (internalPoints.length >= count) break;
+      }
+      
+      attempts++;
+      if (attempts >= maxAttempts) break;
+    }
+    if (internalPoints.length >= count || attempts >= maxAttempts) break;
+  }
+  
+  // If we don't have enough points, fall back to pure random sampling
   while (internalPoints.length < count && attempts < maxAttempts) {
     attempts++;
     
@@ -182,7 +213,7 @@ export const processImageAndGetPoints = async (
           }
           
           // Set canvas size
-          const maxSize = 600; // Max dimension for processing
+          const maxSize = 800; // Increased max dimension for better detail
           let width = img.width;
           let height = img.height;
           
@@ -215,6 +246,8 @@ export const processImageAndGetPoints = async (
           
           // Generate internal points
           const internalPoints = generateInternalPointsRejection(contourPoints, 350);
+          
+          console.log(`Generated ${internalPoints.length} internal points`);
           
           // Return the result
           resolve({

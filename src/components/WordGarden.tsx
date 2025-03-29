@@ -64,6 +64,10 @@ const WordGarden: React.FC<WordGardenProps> = ({
     const newWordElements: WordElementState[] = [];
     const numElementsToCreate = Math.min(internalPoints.length, 350);
 
+    // Find the scaling factors to map normalized points to container size
+    const xScale = containerSize.width / 100;
+    const yScale = containerSize.height / 100;
+
     for (let i = 0; i < numElementsToCreate; i++) {
       const word = words[i % words.length];
       const targetPoint = internalPoints[i];
@@ -74,19 +78,13 @@ const WordGarden: React.FC<WordGardenProps> = ({
       const initialX = containerSize.width / 2 + Math.cos(angle) * radius;
       const initialY = containerSize.height / 2 + Math.sin(angle) * radius;
 
-      // Final position inside container
-      const jitterX = (Math.random() - 0.5) * 5;
-      const jitterY = (Math.random() - 0.5) * 5;
-      let targetX = (targetPoint.x / 100) * containerSize.width + jitterX;
-      let targetY = (targetPoint.y / 100) * containerSize.height + jitterY;
-
-      // Boundary clamping
-      targetX = Math.max(5, Math.min(targetX, containerSize.width - 5));
-      targetY = Math.max(5, Math.min(targetY, containerSize.height - 5));
+      // Final position inside container - direct mapping from normalized coordinates
+      const targetX = targetPoint.x * xScale;
+      const targetY = targetPoint.y * yScale;
 
       // Other properties
-      const fontSize = 9 + Math.random() * 8;
-      const finalScale = 0.65 + Math.random() * 0.3;
+      const fontSize = 10 + Math.random() * 6; // Smaller font size range
+      const finalScale = 0.8 + Math.random() * 0.4; // Adjusted scale range
       const delay = Math.random() * (animationDuration * 1000 * 0.6);
       const wordColor = hexToRgba(baseColor, 0.7 + Math.random() * 0.3);
 
