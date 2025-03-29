@@ -1,11 +1,10 @@
 
 import { Button } from "@/components/ui/button";
 import { PlaybackControlsProps } from "@/types";
-import { RefreshCw, Download, Eye, Video } from "lucide-react";
+import { RefreshCw, Video, Eye } from "lucide-react";
 
 const PlaybackControls: React.FC<PlaybackControlsProps> = ({
   onRestart,
-  onExport,
   onVideoExport,
   onViewPoints,
   canPlay
@@ -23,15 +22,6 @@ const PlaybackControls: React.FC<PlaybackControlsProps> = ({
       </Button>
       <Button 
         variant="outline" 
-        onClick={onExport} 
-        disabled={!canPlay}
-        className=""
-      >
-        <Download className="mr-2 h-4 w-4" />
-        Export PNG
-      </Button>
-      <Button 
-        variant="outline" 
         onClick={onVideoExport} 
         disabled={!canPlay}
         className=""
@@ -43,7 +33,7 @@ const PlaybackControls: React.FC<PlaybackControlsProps> = ({
         variant="outline" 
         onClick={onViewPoints} 
         disabled={!canPlay}
-        className=""
+        className="col-span-2"
       >
         <Eye className="mr-2 h-4 w-4" />
         View Points

@@ -68,7 +68,6 @@ export type ProcessingControlsProps = {
 
 export type PlaybackControlsProps = {
   onRestart: () => void;
-  onExport: () => void;
   onVideoExport: () => void;
   onViewPoints: () => void;
   canPlay: boolean;

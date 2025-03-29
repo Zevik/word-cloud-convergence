@@ -1,29 +1,7 @@
 
 import html2canvas from 'html2canvas';
 
-export const exportToPng = async (element: HTMLElement | null): Promise<void> => {
-  if (!element) {
-    throw new Error('No element provided for export');
-  }
-  
-  try {
-    const canvas = await html2canvas(element, {
-      backgroundColor: null, // Transparent background
-      scale: 2, // Higher quality
-      logging: false
-    });
-    
-    // Convert to PNG and download
-    const dataUrl = canvas.toDataURL('image/png');
-    const link = document.createElement('a');
-    link.download = `word-cloud-${new Date().getTime()}.png`;
-    link.href = dataUrl;
-    link.click();
-  } catch (error) {
-    console.error('Error exporting to PNG:', error);
-    throw error;
-  }
-};
+// We'll remove the exportToPng function since it's no longer needed
 
 export const exportToVideo = async (
   element: HTMLElement | null, 
@@ -39,11 +17,24 @@ export const exportToVideo = async (
     // Call onStart callback if provided
     if (onStart) onStart();
     
-    // Get media stream from the element
-    const stream = element.captureStream ? element.captureStream(30) : null;
+    // First convert the element to a canvas since HTMLElement doesn't directly support captureStream
+    const canvas = await html2canvas(element, {
+      backgroundColor: null, // Transparent background
+      scale: 2, // Higher quality
+      logging: false
+    });
+    
+    // We'll need to add the canvas to the document for the stream to work
+    canvas.style.position = 'absolute';
+    canvas.style.left = '-9999px';
+    document.body.appendChild(canvas);
+    
+    // Get media stream from the canvas
+    // TypeScript needs a type assertion here as captureStream is not recognized in the HTMLCanvasElement type
+    const stream = (canvas as any).captureStream?.(30) || null;
     
     if (!stream) {
-      throw new Error('Cannot capture stream from element');
+      throw new Error('Browser does not support canvas.captureStream()');
     }
     
     // Create media recorder
@@ -61,6 +52,9 @@ export const exportToVideo = async (
     };
     
     recorder.onstop = () => {
+      // Remove the canvas once we're done
+      document.body.removeChild(canvas);
+      
       // Create a blob from all chunks
       const blob = new Blob(chunks, { type: 'video/webm' });
       

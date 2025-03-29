@@ -9,7 +9,7 @@ import AnimationCanvas from "@/components/AnimationCanvas";
 import PlaybackControls from "@/components/PlaybackControls";
 import EdgePreviewDialog from "@/components/EdgePreviewDialog";
 import { processImageAndGetPoints } from "@/utils/imageProcessor";
-import { exportToPng, exportToVideo } from "@/utils/exportUtils";
+import { exportToVideo } from "@/utils/exportUtils";
 import { Point, ProcessingResult, ColorMode } from "@/types";
 
 const DEFAULT_WORDS = [
@@ -114,23 +114,6 @@ const Index = () => {
     });
   }, [toast]);
 
-  const handleExport = useCallback(async () => {
-    try {
-      await exportToPng(animationContainerRef.current);
-      toast({
-        title: "Export successful",
-        description: "Your word cloud has been downloaded as a PNG image",
-      });
-    } catch (error) {
-      console.error("Export error:", error);
-      toast({
-        title: "Export failed",
-        description: "Failed to export the image",
-        variant: "destructive",
-      });
-    }
-  }, [toast]);
-
   const handleVideoExport = useCallback(async () => {
     if (isExporting) return;
     
@@ -211,7 +194,6 @@ const Index = () => {
               
               <PlaybackControls
                 onRestart={handleRestart}
-                onExport={handleExport}
                 onVideoExport={handleVideoExport}
                 onViewPoints={handleViewPoints}
                 canPlay={internalPoints.length > 0 && !isProcessing && !isExporting}
