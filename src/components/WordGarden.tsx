@@ -33,7 +33,7 @@ const WordGarden: React.FC<WordGardenProps> = ({
       if (containerRef.current) {
         const { clientWidth, clientHeight } = containerRef.current;
         if (clientWidth > 0 && clientHeight > 0) {
-          setContainerSize({ width: clientWidth, height: clientHeight });
+          setContainerSize({ width: clientWidth, height: clientWidth });
           console.log(`Container size: ${clientWidth}x${clientHeight}`);
         } else {
           requestAnimationFrame(updateSize);
@@ -69,10 +69,6 @@ const WordGarden: React.FC<WordGardenProps> = ({
     const newWordElements: WordElementState[] = [];
     const numElementsToCreate = Math.min(internalPoints.length, 350);
 
-    // Find the scaling factors to map normalized points to container size
-    const xScale = containerSize.width;
-    const yScale = containerSize.height;
-
     for (let i = 0; i < numElementsToCreate; i++) {
       const word = words[i % words.length];
       const targetPoint = internalPoints[i];
@@ -87,9 +83,13 @@ const WordGarden: React.FC<WordGardenProps> = ({
       const jitterX = (Math.random() - 0.5) * 5;
       const jitterY = (Math.random() - 0.5) * 5;
       
-      // Final position inside container - direct mapping from normalized coordinates (0-100 to pixels)
-      const targetX = (targetPoint.x / 100) * xScale + jitterX;
-      const targetY = (targetPoint.y / 100) * yScale + jitterY;
+      // Final position inside container - map from normalized coordinates (0-100) to pixels
+      let targetX = (targetPoint.x / 100) * containerSize.width + jitterX;
+      let targetY = (targetPoint.y / 100) * containerSize.height + jitterY;
+      
+      // Ensure points stay inside visible area
+      targetX = Math.max(5, Math.min(targetX, containerSize.width - 5));
+      targetY = Math.max(5, Math.min(targetY, containerSize.height - 5));
 
       // Other properties
       const fontSize = 9 + Math.random() * 8; // 9-17px range

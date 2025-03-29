@@ -29,6 +29,7 @@ const EdgePreviewDialog: React.FC<EdgePreviewDialogProps> = ({
           <DialogDescription>
             This shows the edge detection result used to create the word cloud shape. 
             The black pixels in this image represent the areas where words will appear.
+            Each black pixel generates a potential position for a word in the animation.
           </DialogDescription>
         </DialogHeader>
         <div className="flex flex-col items-center justify-center p-2">
@@ -44,6 +45,9 @@ const EdgePreviewDialog: React.FC<EdgePreviewDialogProps> = ({
             </div>
           )}
         </div>
+        <DialogClose asChild>
+          <Button variant="outline" className="mt-2">Close</Button>
+        </DialogClose>
       </DialogContent>
     </Dialog>
   );

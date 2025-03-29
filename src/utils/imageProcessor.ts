@@ -1,9 +1,8 @@
 
 import { Point, ProcessingResult } from "@/types";
 
-// Apply Grayscale, Blur, and Canny Edge Detection
-const applyCannyEdgeDetection = (imageData: ImageData): ImageData => {
-  // Simplified edge detection for client-side implementation
+// Apply Grayscale and detect dark regions for shape formation
+const processImageForEdgeDetection = (imageData: ImageData): ImageData => {
   const data = imageData.data;
   const width = imageData.width;
   const height = imageData.height;
@@ -16,87 +15,53 @@ const applyCannyEdgeDetection = (imageData: ImageData): ImageData => {
     output[i + 3] = 255;
   }
   
-  // Apply a simple edge detection (difference between neighboring pixels)
-  for (let y = 1; y < height - 1; y++) {
-    for (let x = 1; x < width - 1; x++) {
-      const idx = (y * width + x) * 4;
-      const gx = 
-        -1 * output[idx - 4 - width * 4] + 1 * output[idx + 4 - width * 4] +
-        -2 * output[idx - 4] + 2 * output[idx + 4] +
-        -1 * output[idx - 4 + width * 4] + 1 * output[idx + 4 + width * 4];
-      
-      const gy = 
-        -1 * output[idx - 4 - width * 4] - 2 * output[idx - width * 4] - 1 * output[idx + 4 - width * 4] +
-        1 * output[idx - 4 + width * 4] + 2 * output[idx + width * 4] + 1 * output[idx + 4 + width * 4];
-      
-      const magnitude = Math.sqrt(gx * gx + gy * gy);
-      
-      // Thresholding
-      data[idx] = data[idx + 1] = data[idx + 2] = magnitude > 40 ? 255 : 0;
-      data[idx + 3] = 255;
-    }
+  // Simple threshold-based detection
+  for (let i = 0; i < data.length; i += 4) {
+    const brightness = output[i]; // All RGB channels are the same in grayscale
+    // Invert the image so the shape is black (0) and background is white (255)
+    data[i] = data[i + 1] = data[i + 2] = brightness < 128 ? 0 : 255;
+    data[i + 3] = 255;
   }
   
   return new ImageData(data, width, height);
 };
 
-// Check if a point is inside the polygon
-const isPointInsidePolygon = (point: Point, polygon: Point[]): boolean => {
-  let inside = false;
-  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
-    const intersect = ((polygon[i].y > point.y) !== (polygon[j].y > point.y)) &&
-      (point.x < (polygon[j].x - polygon[i].x) * (point.y - polygon[i].y) / (polygon[j].y - polygon[i].y) + polygon[i].x);
-    if (intersect) inside = !inside;
-  }
-  return inside;
-};
-
-// Generate internal points using direct pixel sampling
-const generateInternalPoints = (imageData: ImageData, count: number = 500): Point[] => {
+// Generate internal points by sampling dark pixels with controlled density
+const generateInternalPoints = (imageData: ImageData, maxPoints: number = 1000): Point[] => {
   const { width, height, data } = imageData;
   const points: Point[] = [];
-  const threshold = 128;
   
-  // Determine the skip factor based on image size and desired point count
-  const totalPixels = width * height;
-  const skipFactor = Math.max(1, Math.floor(Math.sqrt(totalPixels / count)));
+  // Calculate a skip factor based on the image size and desired density
+  // We want a reasonable distribution across the image
+  const skipFactor = Math.max(1, Math.floor(Math.sqrt(width * height / maxPoints)));
   
-  // Sample dark pixels directly from the edge-detected image
+  // Sample dark pixels directly from the processed image
   for (let y = 0; y < height; y += skipFactor) {
     for (let x = 0; x < width; x += skipFactor) {
       const idx = (y * width + x) * 4;
-      const brightness = (data[idx] + data[idx + 1] + data[idx + 2]) / 3;
-      
-      if (brightness < threshold) {
-        // Convert to normalized coordinates (0-100)
+      // In our processing, dark pixels (black) are where we want words
+      if (data[idx] < 128) {
+        // Convert to normalized coordinates (0-100 range)
         points.push({
           x: (x / width) * 100,
           y: (y / height) * 100
         });
-        
-        if (points.length >= count) break;
       }
     }
-    if (points.length >= count) break;
   }
   
-  // If we don't have enough points, fill with some random ones inside the image
-  if (points.length < count / 2) {
-    for (let i = points.length; i < count; i++) {
-      points.push({
-        x: Math.random() * 100,
-        y: Math.random() * 100
-      });
-    }
+  // If we have too many points, randomly select a subset
+  if (points.length > maxPoints) {
+    points.sort(() => 0.5 - Math.random()); // Shuffle
+    return points.slice(0, maxPoints);
   }
   
+  // If we don't have enough points, we'll work with what we have
   return points;
 };
 
 // Main processing function
-export const processImageAndGetPoints = async (
-  imageFile: File
-): Promise<ProcessingResult> => {
+export const processImageAndGetPoints = async (imageFile: File): Promise<ProcessingResult> => {
   return new Promise((resolve, reject) => {
     try {
       const reader = new FileReader();
@@ -113,7 +78,7 @@ export const processImageAndGetPoints = async (
             return;
           }
           
-          // Set canvas size
+          // Set canvas size with a reasonable max dimension for performance
           const maxSize = 800;
           let width = img.width;
           let height = img.height;
@@ -135,22 +100,22 @@ export const processImageAndGetPoints = async (
           // Get image data
           const imageData = ctx.getImageData(0, 0, width, height);
           
-          // Process the image with edge detection
-          const edgeData = applyCannyEdgeDetection(imageData);
+          // Process the image to detect edges/shapes
+          const processedData = processImageForEdgeDetection(imageData);
           
-          // Put edge data back to canvas for visualization
-          ctx.putImageData(edgeData, 0, 0);
+          // Put processed data back to canvas for visualization
+          ctx.putImageData(processedData, 0, 0);
           const edgeImageUrl = canvas.toDataURL('image/png');
           
-          // Generate internal points by directly sampling dark pixels
-          const internalPoints = generateInternalPoints(edgeData, 350);
+          // Generate points from the processed image
+          const internalPoints = generateInternalPoints(processedData, 350);
           
           console.log(`Generated ${internalPoints.length} internal points`);
           
           // Return the result
           resolve({
             internalPoints,
-            contourPoints: [], // Not used in this direct sampling approach
+            contourPoints: [], // Not used in this approach
             originalImageUrl: e.target?.result as string,
             edgeImageUrl
           });
