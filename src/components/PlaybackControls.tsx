@@ -36,7 +36,6 @@ const PlaybackControls: React.FC<PlaybackControlsProps> = ({
         variant="outline" 
         onClick={onRestart} 
         disabled={!canPlay || isExporting}
-        className=""
       >
         <RefreshCw className="mr-2 h-4 w-4" />
         Restart
@@ -45,7 +44,6 @@ const PlaybackControls: React.FC<PlaybackControlsProps> = ({
         variant="outline" 
         onClick={handleVideoExport} 
         disabled={!canPlay || isExporting}
-        className=""
       >
         {isExporting ? (
           <Loader2 className="mr-2 h-4 w-4 animate-spin" />

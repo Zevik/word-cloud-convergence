@@ -16,7 +16,7 @@ export const exportToVideo = async (
   }
 
   // --- Configuration ---
-  const frameRate = 30; // Frames per second
+  const frameRate = 60; // Increase frame rate for smoother animation
   const totalFrames = duration * frameRate;
   const interval = 1000 / frameRate; // milliseconds between frames
 
@@ -27,6 +27,7 @@ export const exportToVideo = async (
   let frameCount = 0;
   let animationFrameId: number | null = null;
   const chunks: Blob[] = [];
+  let startTime: number;
 
   const cleanup = () => {
     console.log("Cleaning up resources...");
@@ -67,21 +68,18 @@ export const exportToVideo = async (
     recordingCanvas = document.createElement('canvas');
     recordingCanvas.width = width;
     recordingCanvas.height = height;
-    recordingCtx = recordingCanvas.getContext('2d', { alpha: false }); // Use alpha: false if background is solid
+    // Enable alpha channel for transparency
+    recordingCtx = recordingCanvas.getContext('2d', { alpha: true });
 
     if (!recordingCtx) {
       throw new Error('Failed to get 2D context for recording canvas');
     }
-    // Set a background color for the recording canvas if needed
-    const computedStyle = getComputedStyle(element);
-    recordingCtx.fillStyle = computedStyle.backgroundColor || 'white'; // Default to white if no background
-    recordingCtx.fillRect(0, 0, width, height);
 
     // --- Setup MediaRecorder ---
     stream = recordingCanvas.captureStream(frameRate);
     const options = {
-      mimeType: 'video/webm;codecs=vp9',
-      videoBitsPerSecond: 5000000, // 5 Mbps, adjust as needed
+      mimeType: 'video/webm;codecs=vp9', // VP9 supports alpha channel
+      videoBitsPerSecond: 8000000, // 8 Mbps for better quality
     };
     if (!MediaRecorder.isTypeSupported(options.mimeType)) {
       console.warn(`${options.mimeType} not supported, trying default.`);
@@ -148,7 +146,8 @@ export const exportToVideo = async (
     };
 
     // --- Animation Frame Loop ---
-    let lastFrameTime = performance.now();
+    startTime = performance.now();
+    const endTime = startTime + (duration * 1000); // When to stop capturing
 
     const captureFrame = async (currentTime: number) => {
       // Check if recorder is still active
@@ -158,55 +157,45 @@ export const exportToVideo = async (
         return;
       }
 
-      // Ensure we run at the desired frame rate
-      const elapsed = currentTime - lastFrameTime;
-      if (elapsed < interval && frameCount < totalFrames) {
-         animationFrameId = requestAnimationFrame(captureFrame);
-         return; // Skip frame if interval hasn't passed yet
+      // Stop if we've reached the end time
+      if (currentTime >= endTime) {
+        console.log("Reached end time, stopping recorder...");
+        if (recorder && recorder.state === 'recording') {
+          recorder.stop();
+        } else {
+          cleanup();
+        }
+        return;
       }
-      lastFrameTime = currentTime - (elapsed % interval); // Adjust lastFrameTime
 
       try {
         // Capture current state of the element
         const capturedCanvas = await html2canvas(element, {
           backgroundColor: null, // Capture transparency
-          scale: 1, // Use scale 1 for performance, increase if quality is too low
+          scale: 1, // Use scale 1 for performance
           logging: false,
           useCORS: true,
-          allowTaint: true, // May be needed depending on content
+          allowTaint: true,
           width: width,
           height: height,
           x: 0,
           y: 0,
-          scrollX: -window.scrollX, // Adjust for window scroll
+          scrollX: -window.scrollX,
           scrollY: -window.scrollY,
-          windowWidth: document.documentElement.offsetWidth, // Provide window dimensions
-          windowHeight: document.documentElement.offsetHeight,
         });
 
-        // Draw captured frame onto the recording canvas
-        recordingCtx.clearRect(0, 0, width, height); // Clear previous frame
-        // Redraw background if needed
-        recordingCtx.fillStyle = computedStyle.backgroundColor || 'white';
-        recordingCtx.fillRect(0, 0, width, height);
-        // Draw the captured content
+        // Draw captured frame onto the recording canvas with transparency
+        recordingCtx.clearRect(0, 0, width, height); // Clear previous frame (preserves transparency)
         recordingCtx.drawImage(capturedCanvas, 0, 0, width, height);
 
         frameCount++;
-        console.log(`Captured frame ${frameCount}/${totalFrames}`);
-
-        // Continue or stop recording
-        if (frameCount < totalFrames) {
-          animationFrameId = requestAnimationFrame(captureFrame);
-        } else {
-          console.log("Reached total frames, stopping recorder...");
-          if (recorder && recorder.state === 'recording') {
-            recorder.stop(); // This will trigger onstop event
-          } else {
-            console.warn("Recorder was not in recording state when trying to stop.");
-            cleanup(); // Manually cleanup if recorder wasn't recording
-          }
+        
+        if (frameCount % 10 === 0) { // Log less frequently to reduce console spam
+          console.log(`Captured frame ${frameCount}, elapsed: ${((currentTime - startTime)/1000).toFixed(1)}s/${duration}s`);
         }
+
+        // Continue capturing frames
+        animationFrameId = requestAnimationFrame(captureFrame);
       } catch (error) {
         console.error('Error capturing frame with html2canvas:', error);
         const err = error instanceof Error ? error : new Error(String(error));
