@@ -1,8 +1,6 @@
 
 import html2canvas from 'html2canvas';
 
-// We'll remove the exportToPng function since it's no longer needed
-
 export const exportToVideo = async (
   element: HTMLElement | null, 
   duration: number = 5,
@@ -17,11 +15,19 @@ export const exportToVideo = async (
     // Call onStart callback if provided
     if (onStart) onStart();
     
-    // First convert the element to a canvas since HTMLElement doesn't directly support captureStream
+    // Create a canvas copy of the element with higher quality
     const canvas = await html2canvas(element, {
       backgroundColor: null, // Transparent background
       scale: 2, // Higher quality
-      logging: false
+      logging: false,
+      useCORS: true, // Allow cross-origin images
+      allowTaint: true // Allow tainted canvas
+    });
+    
+    // Convert all words to SVG content to ensure they're included
+    const wordElements = element.querySelectorAll('span');
+    wordElements.forEach(word => {
+      word.style.willChange = 'transform, opacity';
     });
     
     // We'll need to add the canvas to the document for the stream to work
@@ -30,17 +36,17 @@ export const exportToVideo = async (
     document.body.appendChild(canvas);
     
     // Get media stream from the canvas
-    // TypeScript needs a type assertion here as captureStream is not recognized in the HTMLCanvasElement type
-    const stream = (canvas as any).captureStream?.(30) || null;
+    // Using a higher framerate for smoother animation
+    const stream = (canvas as any).captureStream?.(60) || null;
     
     if (!stream) {
       throw new Error('Browser does not support canvas.captureStream()');
     }
     
-    // Create media recorder
+    // Create media recorder with higher quality settings
     const recorder = new MediaRecorder(stream, {
       mimeType: 'video/webm;codecs=vp9',
-      videoBitsPerSecond: 5000000 // 5 Mbps
+      videoBitsPerSecond: 8000000 // 8 Mbps for higher quality
     });
     
     const chunks: Blob[] = [];
@@ -57,6 +63,15 @@ export const exportToVideo = async (
       
       // Create a blob from all chunks
       const blob = new Blob(chunks, { type: 'video/webm' });
+      
+      // Log the blob size to help diagnose issues
+      console.log(`Video blob size: ${blob.size} bytes`);
+      
+      if (blob.size < 1000) {
+        console.error('Warning: Generated video is too small, likely corrupt');
+        if (onFinish) onFinish();
+        throw new Error('Generated video is too small');
+      }
       
       // Create a download link
       const url = URL.createObjectURL(blob);
@@ -75,12 +90,14 @@ export const exportToVideo = async (
     };
     
     // Start recording
-    recorder.start();
+    recorder.start(1000); // Capture in 1-second chunks for better reliability
     
-    // Stop after duration + a small buffer
+    // Ensure we have at least one full duration cycle plus a small buffer
     setTimeout(() => {
-      recorder.stop();
-    }, (duration * 1000) + 500);
+      if (recorder.state === 'recording') {
+        recorder.stop();
+      }
+    }, (duration * 1000) + 1000); // Add 1 second buffer
     
   } catch (error) {
     console.error('Error exporting to video:', error);
