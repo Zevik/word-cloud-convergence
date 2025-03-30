@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { PlaybackControlsProps } from "@/types";
 import { RefreshCw, Video, Eye, Loader2 } from "lucide-react";
 import { useState } from "react";
+import { useToast } from "@/components/ui/use-toast";
 
 const PlaybackControls: React.FC<PlaybackControlsProps> = ({
   onRestart,
@@ -10,12 +11,20 @@ const PlaybackControls: React.FC<PlaybackControlsProps> = ({
   onViewPoints,
   canPlay
 }) => {
+  const { toast } = useToast();
   const [isExporting, setIsExporting] = useState(false);
 
   const handleVideoExport = async () => {
     try {
       setIsExporting(true);
       await onVideoExport();
+    } catch (error) {
+      console.error("Error in video export:", error);
+      toast({
+        title: "Export Failed",
+        description: error instanceof Error ? error.message : "An unknown error occurred",
+        variant: "destructive",
+      });
     } finally {
       setIsExporting(false);
     }
