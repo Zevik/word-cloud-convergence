@@ -17,7 +17,24 @@ const PlaybackControls: React.FC<PlaybackControlsProps> = ({
   const handleVideoExport = async () => {
     try {
       setIsExporting(true);
-      await onVideoExport();
+      
+      // First restart the animation to ensure we capture from the beginning
+      onRestart();
+      
+      // Small delay to ensure animation has fully restarted before we begin capture
+      setTimeout(async () => {
+        try {
+          await onVideoExport();
+        } catch (error) {
+          console.error("Error in video export:", error);
+          toast({
+            title: "Export Failed",
+            description: error instanceof Error ? error.message : "An unknown error occurred",
+            variant: "destructive",
+          });
+          setIsExporting(false);
+        }
+      }, 100);
     } catch (error) {
       console.error("Error in video export:", error);
       toast({
@@ -25,7 +42,6 @@ const PlaybackControls: React.FC<PlaybackControlsProps> = ({
         description: error instanceof Error ? error.message : "An unknown error occurred",
         variant: "destructive",
       });
-    } finally {
       setIsExporting(false);
     }
   };

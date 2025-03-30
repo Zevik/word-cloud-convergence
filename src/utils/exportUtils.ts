@@ -16,7 +16,7 @@ export const exportToVideo = async (
   }
 
   // --- Configuration ---
-  const frameRate = 60; // Increase frame rate for smoother animation
+  const frameRate = 60; // Higher frame rate for smoother animation
   const totalFrames = duration * frameRate;
   const interval = 1000 / frameRate; // milliseconds between frames
 
@@ -182,6 +182,8 @@ export const exportToVideo = async (
           y: 0,
           scrollX: -window.scrollX,
           scrollY: -window.scrollY,
+          windowWidth: document.documentElement.offsetWidth,
+          windowHeight: document.documentElement.offsetHeight,
         });
 
         // Draw captured frame onto the recording canvas with transparency
@@ -208,7 +210,7 @@ export const exportToVideo = async (
     console.log("Starting recorder...");
     recorder.start();
     console.log("Recorder state:", recorder.state);
-    animationFrameId = requestAnimationFrame(captureFrame); // Start the capture loop
+    animationFrameId = requestAnimationFrame(captureFrame); // Start the capture loop immediately
 
   } catch (error) {
     console.error('Error during video export setup:', error);
